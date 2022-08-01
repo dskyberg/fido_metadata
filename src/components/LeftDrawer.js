@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { invoke } from '@tauri-apps/api/tauri'
 import { useRecoilState } from 'recoil'
 import { drawerState } from '../state'
 import {
@@ -8,14 +10,45 @@ import {
     DrawerHeader,
     DrawerBody,
     DrawerFooter,
-    Input,
-    Button
+    Button,
+    useToast,
+    CircularProgress
 } from '@chakra-ui/react'
 
 function LeftDrawer() {
     const [isOpen, setIsOpen] = useRecoilState(drawerState)
+    const [isFetching, setIsFetching] = useState(false)
+    const toast = useToast()
+
+    const handleFetch = () => {
+        setIsFetching(true)
+        invoke('fetch_metadata')
+            .then(() => {
+                console.log("Fetch succeeded")
+                setIsFetching(false)
+                setIsOpen(false)
+                toast({
+                    title: 'Fetch Succeeded',
+                    status: 'success',
+                    isClosable: true,
+                })
+            })
+            .catch(err => {
+                console.log("Fetch returned an error:", err)
+                setIsFetching(false)
+                setIsOpen(false)
+                toast({
+                    title: 'Fetch Error',
+                    description: err,
+                    status: 'error',
+                    isClosable: true,
+                })
+            })
+
+    }
 
     const handleClose = () => { setIsOpen(false) }
+
     return (
         <Drawer
             isOpen={isOpen}
@@ -25,10 +58,11 @@ function LeftDrawer() {
             <DrawerOverlay />
             <DrawerContent>
                 <DrawerCloseButton />
-                <DrawerHeader>Create your account</DrawerHeader>
+                <DrawerHeader>FIDO</DrawerHeader>
 
                 <DrawerBody>
-                    <Input placeholder='Type here...' />
+                    {isFetching == false && <Button colorScheme='blue' onClick={handleFetch}>Fetch Metadata</Button>}
+                    {isFetching == true && <CircularProgress isIndeterminate color='green.300' />}
                 </DrawerBody>
 
                 <DrawerFooter>

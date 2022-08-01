@@ -19,10 +19,37 @@ async fn search(
     Ok(result)
 }
 
+/// Fetch the latest metadata
+#[tauri::command]
+async fn fetch_metadata() -> Result<(), String> {
+    // Fetch the metadata from the FIDO site
+    let blob = app::fetch_fido_metadata()
+        .await
+        .map_err(|e| format!("{:?}", &e.to_string()))?;
+
+    // Store the metadata header info
+    let data = Data::new().await;
+    let _ = data
+        .put_metadata_blob(&blob)
+        .await
+        .map_err(|e| format!("{:?}", &e.to_string()))?;
+
+    // Store each of the statements
+    for entry in blob.entries {
+        if let Some(statement) = entry.metadata_statement {
+            data.put_entry(blob.no, &statement)
+                .await
+                .map_err(|e| format!("{:?}", &e.to_string()))?;
+        }
+    }
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![search])
+        .invoke_handler(tauri::generate_handler![fetch_metadata, search])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
     Ok(())
