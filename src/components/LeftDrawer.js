@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { invoke } from '@tauri-apps/api/tauri'
-import { useRecoilState } from 'recoil'
-import { drawerState } from '../state'
+import { useRecoilState, useSetRecoilState } from 'recoil'
+import { drawerState, filterState, optionState, resultsState } from '../state'
 import {
     Drawer,
     DrawerOverlay,
@@ -12,13 +12,24 @@ import {
     DrawerFooter,
     Button,
     useToast,
-    CircularProgress
+    CircularProgress,
+    VStack
 } from '@chakra-ui/react'
 
 function LeftDrawer() {
     const [isOpen, setIsOpen] = useRecoilState(drawerState)
+    const setFilter = useSetRecoilState(filterState)
+    const setOptions = useSetRecoilState(optionState)
+    const setResults = useSetRecoilState(resultsState)
     const [isFetching, setIsFetching] = useState(false)
     const toast = useToast()
+
+    const handleReset = () => {
+        console.log('Clearing the current state')
+        setFilter(() => '')
+        setOptions(() => '')
+        setResults(() => [])
+    }
 
     const handleFetch = () => {
         setIsFetching(true)
@@ -61,8 +72,13 @@ function LeftDrawer() {
                 <DrawerHeader>FIDO</DrawerHeader>
 
                 <DrawerBody>
-                    {isFetching == false && <Button colorScheme='blue' onClick={handleFetch}>Fetch Metadata</Button>}
-                    {isFetching == true && <CircularProgress isIndeterminate color='green.300' />}
+                    <VStack>
+                        {isFetching == false && <Button colorScheme='blue' onClick={handleFetch}>Fetch Metadata</Button>}
+                        {isFetching == true && <CircularProgress isIndeterminate color='green.300' />}
+                        <Button colorScheme='teal' variant='ghost' onClick={handleReset}>
+                            Reset
+                        </Button>
+                    </VStack>
                 </DrawerBody>
 
                 <DrawerFooter>

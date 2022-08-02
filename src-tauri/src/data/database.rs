@@ -61,19 +61,11 @@ impl Data {
             .await?)
     }
 
-    pub async fn put_entry(
-        &self,
-        metadata_no: u32,
-        statement: &MetadataStatement,
-    ) -> Result<(), Box<dyn Error>> {
-        let entry = MetadataEntry {
-            metadata_no,
-            statement: statement.clone(),
-        };
+    pub async fn put_entry(&self, statement: &MetadataStatement) -> Result<(), Box<dyn Error>> {
         let _result = self
             .database
-            .collection::<MetadataEntry>("entries")
-            .insert_one(&entry, None)
+            .collection::<MetadataStatement>("entries")
+            .insert_one(statement, None)
             .await?;
         Ok(())
     }
@@ -85,13 +77,13 @@ impl Data {
     ) -> Result<Vec<MetadataStatement>, Box<dyn Error>> {
         let mut cursor = self
             .database
-            .collection::<MetadataEntry>("entries")
+            .collection::<MetadataStatement>("entries")
             .find(filter, options)
             .await?;
         let mut entries: Vec<MetadataStatement> = Vec::new();
 
-        while let Some(entry) = cursor.try_next().await? {
-            entries.push(entry.statement);
+        while let Some(statement) = cursor.try_next().await? {
+            entries.push(statement);
         }
         Ok(entries)
     }
@@ -103,11 +95,11 @@ impl Data {
     ) -> Result<Option<MetadataStatement>, Box<dyn Error>> {
         let result = self
             .database
-            .collection::<MetadataEntry>("entries")
+            .collection::<MetadataStatement>("entries")
             .find_one(filter, options)
             .await?;
         match result {
-            Some(entry) => Ok(Some(entry.statement)),
+            Some(statement) => Ok(Some(statement)),
             _ => Ok(None),
         }
     }
@@ -165,7 +157,26 @@ mod tests {
     #[tokio::test]
     async fn test_find() {
         let data = Data::new().await;
-        let filter = doc! {"statement.aaguid": {"$exists":true}};
+        let filter = doc! {"aaguid": {"$exists":true}};
+        let result = data.find_statement(Some(filter), None).await.expect("oops");
+        for statement in result {
+            println!("{}", &statement.aaguid.unwrap());
+        }
+    }
+    use serde_json;
+
+    #[tokio::test]
+    async fn test_find_types() {
+        let data = Data::new().await;
+        let filter_str = r#"{
+            "aaguid": {
+                "$exists":true
+            }
+        }"#;
+        let filter_str2 = r#"{"aaguid":"9c835346-796b-4c27-8898-d6032f515cc5"}"#;
+        dbg!(filter_str);
+        let filter: Document = serde_json::from_str(filter_str2).expect("parse failed");
+        dbg!(&filter);
         let result = data.find_statement(Some(filter), None).await.expect("oops");
         for statement in result {
             println!("{}", &statement.aaguid.unwrap());

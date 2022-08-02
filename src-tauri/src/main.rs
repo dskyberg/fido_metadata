@@ -8,14 +8,30 @@ use std::error::Error;
 
 #[tauri::command(async)]
 async fn search(
-    filter: Option<Document>,
-    options: Option<FindOptions>,
+    filter_str: String,  /*Document */
+    options_str: String, /*FindOptions */
 ) -> Result<Vec<app::MetadataStatement>, String> {
+    println!("{:?} - {:?}", &filter_str, &options_str);
     let data = Data::new().await;
-    let result = data
-        .find_statement(filter, options)
-        .await
-        .map_err(|e| format!("{:?}", e))?;
+    let mut filter: Option<Document> = None;
+    let mut options: Option<FindOptions> = None;
+
+    if !filter_str.is_empty() {
+        let tmp: Document =
+            serde_json::from_str(&filter_str).map_err(|e| format!("Filter: {}", e))?;
+        filter = Some(tmp);
+    }
+
+    if !options_str.is_empty() {
+        let tmp: FindOptions =
+            serde_json::from_str(&options_str).map_err(|e| format!("Options: {}", e))?;
+        options = Some(tmp);
+    }
+
+    let result = data.find_statement(filter, options).await.map_err(|e| {
+        log::info!("{}", e.to_string());
+        format!("{:?}", e)
+    })?;
     Ok(result)
 }
 
@@ -37,7 +53,7 @@ async fn fetch_metadata() -> Result<(), String> {
     // Store each of the statements
     for entry in blob.entries {
         if let Some(statement) = entry.metadata_statement {
-            data.put_entry(blob.no, &statement)
+            data.put_entry(&statement)
                 .await
                 .map_err(|e| format!("{:?}", &e.to_string()))?;
         }
@@ -48,6 +64,7 @@ async fn fetch_metadata() -> Result<(), String> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
+    env_logger::init();
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![fetch_metadata, search])
         .run(tauri::generate_context!())
