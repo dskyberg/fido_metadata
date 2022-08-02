@@ -8,7 +8,7 @@ export default function Metadata() {
 
     console.log('Metadata')
     return (
-        <VStack spacing={4}>
+        <VStack spacing={4} mb={20}>
             <SearchBox />
             <ResultsBox />
         </VStack>

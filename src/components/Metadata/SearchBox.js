@@ -1,8 +1,8 @@
 import { invoke } from '@tauri-apps/api/tauri'
 import { useRecoilState, useSetRecoilState, } from 'recoil'
 import { resultsState, filterState, optionState } from '../../state'
-import { Button, Input, HStack, Box } from '@chakra-ui/react'
-
+import { IconButton, Input, HStack, Box, useColorModeValue, useToast } from '@chakra-ui/react'
+import { FaSearch } from 'react-icons/fa';
 String.prototype.convert8 = function () {
     var bytes = [];
     for (var i = 0; i < this.length; ++i) {
@@ -18,6 +18,10 @@ export default function SearchBox() {
     const [filter, setFilter] = useRecoilState(filterState)
     const [options, setOptions] = useRecoilState(optionState)
     const setResults = useSetRecoilState(resultsState)
+    const toast = useToast()
+
+    // Set the light and dark mode colors for the navbar
+    const bg = useColorModeValue('teal.50', 'teal.500')
 
     const handleFilterChange = (event) => {
         setFilter(() => event.target.value)
@@ -35,15 +39,25 @@ export default function SearchBox() {
         invoke('search', args)
             .then((results) => {
                 setResults(() => results)
-                console.log(results)
+                toast({
+                    title: `Found ${results.length} matches`,
+                    status: 'success',
+                    isClosable: true,
+                })
             })
             .catch(err => {
+                toast({
+                    title: `Search failed`,
+                    status: 'error',
+                    description: err,
+                    isClosable: true,
+                })
                 console.log("Search returned an error:", err)
             })
     }
 
     return (
-        <Box w={[200, 300, 800]} p={5} shadow='md' borderWidth='1px' >
+        <Box w={[200, 300, 800]} p={5} shadow='md' borderWidth='1px' backgroundColor={bg}>
             <HStack >
                 <Input
                     value={filter}
@@ -55,9 +69,13 @@ export default function SearchBox() {
                     onChange={handleOptionsChange}
                     placeholder='Options'
                 />
-                <Button variant='outline' mr={3} onClick={handleClick}>
-                    Search
-                </Button>
+                <IconButton
+                    colorScheme='blue'
+                    variant="ghost"
+                    aria-label='Search database'
+                    icon={<FaSearch />}
+                    onClick={handleClick}
+                />
 
             </HStack>
         </Box>

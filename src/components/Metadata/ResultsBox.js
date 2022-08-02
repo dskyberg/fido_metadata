@@ -1,6 +1,6 @@
 import { useRecoilValue } from 'recoil'
 import { resultsState } from '../../state'
-import { Box, Accordion, AccordionItem, AccordionButton, AccordionIcon, AccordionPanel } from '@chakra-ui/react'
+import { VStack, Box, Accordion, AccordionItem, AccordionButton, AccordionIcon, AccordionPanel } from '@chakra-ui/react'
 
 function Result(props) {
     let { result } = props
@@ -25,7 +25,9 @@ function Result(props) {
                         </AccordionButton>
                     </h2>
                     <AccordionPanel pb={4}>
-                        {panelText}
+                        <pre>
+                            {panelText}
+                        </pre>
                     </AccordionPanel>
                 </AccordionItem>
             </Accordion>
@@ -38,11 +40,11 @@ export default function ResultsBox() {
     const results = useRecoilValue(resultsState);
 
     return (
-        <>
+        <VStack spacing={4}>
             {
                 results.map((result, idx) => (<Result key={`result-${idx}`} result={result} />))
             }
-        </>
+        </VStack>
     )
 
 }

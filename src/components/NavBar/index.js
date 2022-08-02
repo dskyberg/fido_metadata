@@ -11,8 +11,10 @@ function NavBar() {
     const setIsOpen = useSetRecoilState(drawerState)
 
     const handleDrawerClick = () => { setIsOpen(true) }
+
     // Set the light and dark mode colors for the navbar
-    const bg = useColorModeValue('teal.50', 'teal.500')
+    const bg = useColorModeValue('teal.100', 'teal.700')
+
     return (
         <Flex
             as="header"
@@ -24,7 +26,7 @@ function NavBar() {
         >
             <DrawerButton onClick={handleDrawerClick} />
             <Spacer />
-            <NavbarHeader>Chakra Demo</NavbarHeader>
+            <NavbarHeader>FIDO Metadata</NavbarHeader>
             <Spacer />
             <ColorModeSwitcher />
         </Flex>
