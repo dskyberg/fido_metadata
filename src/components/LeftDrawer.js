@@ -16,6 +16,7 @@ import {
     VStack
 } from '@chakra-ui/react'
 
+
 function LeftDrawer() {
     const [isOpen, setIsOpen] = useRecoilState(drawerState)
     const setFilter = useSetRecoilState(filterState)
@@ -71,8 +72,8 @@ function LeftDrawer() {
 
                 <DrawerBody>
                     <VStack>
-                        {isFetching == false && <Button colorScheme='blue' onClick={handleFetch}>Fetch Metadata</Button>}
-                        {isFetching == true && <CircularProgress isIndeterminate color='green.300' />}
+                        {isFetching === false && <Button colorScheme='blue' onClick={handleFetch}>Fetch Metadata</Button>}
+                        {isFetching === true && <CircularProgress isIndeterminate color='green.300' />}
                         <Button colorScheme='teal' variant='ghost' onClick={handleReset}>
                             Reset
                         </Button>

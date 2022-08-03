@@ -35,6 +35,18 @@ impl Data {
         Self { client, database }
     }
 
+    pub async fn drop(&self) -> Result<(), Box<dyn Error>> {
+        self.database
+            .collection::<MetadataStatement>("entries")
+            .drop(None)
+            .await?;
+        self.database
+            .collection::<Metadata>("metadata")
+            .drop(None)
+            .await?;
+        Ok(())
+    }
+
     pub async fn put_metadata_blob(
         &self,
         blob: &MetadataBLOBPayload,
@@ -44,6 +56,9 @@ impl Data {
     }
 
     pub async fn put_metadata(&self, metadata: &Metadata) -> Result<String, Box<dyn Error>> {
+        // Drop the existing data
+        self.drop().await?;
+
         let result = self
             .database
             .collection::<Metadata>("metadata")
@@ -120,6 +135,12 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    async fn test_drop() {
+        let data = Data::new().await;
+        data.drop().await.expect("oops");
+    }
+
+    #[tokio::test]
     async fn test_get_metadata_by_no() {
         let data = Data::new().await;
         let md = data.get_metadata_by_no(17).await.expect("Failed to fetch");
@@ -182,4 +203,21 @@ mod tests {
             println!("{}", &statement.aaguid.unwrap());
         }
     }
+
+    #[tokio::test]
+    async fn test_find_regex() {
+        let data = Data::new().await;
+        let filter_str = r#"{
+            "aaguid": {"$regex":"796b-4c27-8898"}
+        }"#;
+        //let filter_str2 = r#"{"aaguid":"9c835346-796b-4c27-8898-d6032f515cc5"}"#;
+        dbg!(filter_str);
+        let filter: Document = serde_json::from_str(filter_str).expect("parse failed");
+        dbg!(&filter);
+        let result = data.find_statement(Some(filter), None).await.expect("oops");
+        for statement in result {
+            println!("{}", &statement.aaguid.unwrap());
+        }
+    }
+
 }
