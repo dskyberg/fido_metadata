@@ -25,7 +25,6 @@ function LeftDrawer() {
     const toast = useToast()
 
     const handleReset = () => {
-        console.log('Clearing the current state')
         setFilter(() => '')
         setOptions(() => '')
         setResults(() => [])
@@ -35,7 +34,6 @@ function LeftDrawer() {
         setIsFetching(true)
         invoke('fetch_metadata')
             .then(() => {
-                console.log("Fetch succeeded")
                 setIsFetching(false)
                 setIsOpen(false)
                 toast({
