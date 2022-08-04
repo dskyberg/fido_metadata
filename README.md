@@ -11,7 +11,7 @@ Once you clone the repo, cd to the fido_metadata folder and run:
 ````
 Once that completes you can run the app with:
 
-````
+````sh
 > npm run tauri dev
 ````
 That's it!  Enjoy!
