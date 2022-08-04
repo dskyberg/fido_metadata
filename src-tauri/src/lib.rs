@@ -1,9 +1,7 @@
+use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
 use std::env;
 use std::error::Error;
-use std::fs::File;
-use std::io::prelude::*;
-
-use josekit::{jws::RS256, jwt};
+use x509_parser::prelude::*;
 
 pub use data::Data;
 pub use model::*;
@@ -27,52 +25,40 @@ pub(crate) async fn fetch(url: &str) -> Result<String, errors::Error> {
     Ok(body)
 }
 
-/// Return file contents as string
-pub(crate) fn get_file_as_str(filename: &str) -> Result<String, Box<dyn Error>> {
-    let mut f = File::open(filename)?;
-    let mut s = String::new();
-    f.read_to_string(&mut s)?;
+pub(crate) fn verify_jwt(token: &str) -> Result<MetadataBLOBPayload, Box<dyn Error>> {
+    // Pull the algorithm from the alg claim and the
+    // X509 cert list from the x5c claim
+    let header = decode_header(token)?;
+    // This should be RS256. Grab it and use it for the Decode
+    let alg = header.alg;
 
-    Ok(s)
-}
+    // x509_parser is kind enough to provide a helper function to
+    // grab the x5c list in DER format, rather than PEM.  Thanks!!
+    let x5c_list = header.x5c_der()?.unwrap_or_default();
 
-/// Attempt to verify the JWT.  
-/// This currently does not work with [josekit]
-pub fn verify_jwt(token_file: &str, pem_file: &str) -> Result<(), Box<dyn Error>> {
-    let token = get_file_as_str(token_file)?;
-    let pem = get_file_as_str(pem_file)?;
+    let mut validation = Validation::new(alg);
+    validation.validate_exp = false;
+    validation.required_spec_claims = std::collections::HashSet::new();
 
-    let verifier = RS256.verifier_from_pem(&pem.as_bytes())?;
-    let _result = jwt::decode_with_verifier(&token.as_bytes(), &verifier).map_err(|e| {
-        println!("Error! {:?}", &e);
-        e
-    })?;
+    // Since order isn't guaranteed in the cert chain, try them all
+    // until one succeeds.
+    for der in x5c_list {
+        // Parse the X.509
+        let (_, cert) = X509Certificate::from_der(&der)?;
+        // Get the public key in SPKI format
+        let public_key_bytes = cert.subject_pki.subject_public_key.as_ref();
+        // Create a key from the SPKI
+        let key = DecodingKey::from_rsa_der(public_key_bytes);
 
-    println!("We got a token!");
-    Ok(())
-}
+        // Decode the JWT.
+        let result = decode::<MetadataBLOBPayload>(token, &key, &validation);
 
-/// Deserialize the JWT and JSON payload
-/// This method does not verify the JWT signature.  It just deseriaizes the payload.
-pub fn deserialize_jwt(jwt: &str) -> Result<MetadataBLOBPayload, Box<dyn Error>> {
-    let indexies: Vec<usize> = jwt
-        .as_bytes()
-        .iter()
-        .enumerate()
-        .filter(|(_, b)| **b == b'.')
-        .map(|(pos, _)| pos)
-        .collect();
-    if indexies.len() != 2 {
-        return Err(Box::new(errors::Error::BadJWT));
+        if let Ok(token_data) = result {
+            let blob = token_data.claims;
+            return Ok(blob);
+        }
     }
-
-    let payload = &jwt[(indexies[0] + 1)..(indexies[1])];
-    let payload = base64::decode_config(payload, base64::URL_SAFE_NO_PAD)
-        .map_err(errors::Error::B64Decode)?;
-
-    let metadata = serde_json::from_slice::<MetadataBLOBPayload>(&payload)
-        .map_err(errors::Error::JSONDeserialize)?;
-    Ok(metadata)
+    Err(crate::errors::Error::InvalidSignature.into())
 }
 
 /// Download the FIDO Metadata
@@ -80,31 +66,6 @@ pub fn deserialize_jwt(jwt: &str) -> Result<MetadataBLOBPayload, Box<dyn Error>>
 pub async fn fetch_fido_metadata() -> Result<MetadataBLOBPayload, Box<dyn Error>> {
     let url = env::var("FIDO_METADATA_URL").unwrap_or_else(|_| FIDO_METADATA_URL.to_string());
     let body = fetch(&url).await?;
-    let metadata = deserialize_jwt(&body)?;
+    let metadata = verify_jwt(&body)?;
     Ok(metadata)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use josekit::jws::{deserialize_compact, RS256};
-    #[test]
-    fn test_decode() {
-        let token = get_file_as_str("./test/fido_metadata.jwt").expect("no token file");
-        let pem = get_file_as_str("./test/x5c_1_key.pem").expect("no pem file");
-
-        let verifier = RS256
-            .verifier_from_pem(&pem.as_bytes())
-            .expect("verifier failed");
-
-        let _result = deserialize_compact(&token.as_bytes(), &verifier).expect("oops");
-        println!("We got a token!");
-    }
-
-    #[test]
-    fn test_deserialize_jwt() {
-        let jwt = get_file_as_str("./test/fido_metadata.jwt").expect("No file");
-        let metadata = deserialize_jwt(&jwt).expect("no token file");
-        dbg!(&metadata);
-    }
 }

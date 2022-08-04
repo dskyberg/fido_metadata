@@ -14,4 +14,6 @@ pub enum Error {
     DatabaseError(#[from] mongodb::error::Error),
     #[error("could not access field in document: {0}")]
     MongoDataError(#[from] mongodb::bson::document::ValueAccessError),
+    #[error("Invalid Signature")]
+    InvalidSignature,
 }
