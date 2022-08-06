@@ -1,5 +1,4 @@
 use chrono::{DateTime, Utc};
-use mongodb::bson::serde_helpers::chrono_datetime_as_bson_datetime;
 use serde::{Deserialize, Serialize};
 
 use crate::model::*;
@@ -11,8 +10,7 @@ pub struct Metadata {
     pub legal_header: Option<String>, // DOMString                          legalHeader;
     pub no: u32,             // required Number                    no;
     pub next_update: String, //required DOMString                 nextUpdate;
-    #[serde(with = "chrono_datetime_as_bson_datetime")]
-    date: DateTime<Utc>,
+    pub date: DateTime<Utc>,
 }
 impl Metadata {
     pub fn new(legal_header: Option<String>, no: u32, next_update: String) -> Self {

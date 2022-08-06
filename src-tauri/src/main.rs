@@ -2,9 +2,19 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
-use app::Data;
-use mongodb::{bson::Document, options::FindOptions};
+use app::JsonCache;
 use std::error::Error;
+use std::{
+    collections::HashMap,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc, Mutex,
+    },
+};
+use tauri::State;
+
+#[derive(Default)]
+struct Database(Arc<Mutex<JsonCache>>);
 
 #[tauri::command(async)]
 async fn search(
@@ -66,6 +76,7 @@ async fn fetch_metadata() -> Result<(), String> {
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     tauri::Builder::default()
+        .manage(Database(Default::default()))
         .invoke_handler(tauri::generate_handler![fetch_metadata, search])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

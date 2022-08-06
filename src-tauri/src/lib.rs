@@ -3,7 +3,7 @@ use std::env;
 use std::error::Error;
 use x509_parser::prelude::*;
 
-pub use data::Data;
+pub use data::JsonCache;
 pub use model::*;
 
 pub mod data;
@@ -14,12 +14,10 @@ pub mod model;
 static FIDO_METADATA_URL: &str = "https://mds.fidoalliance.org";
 
 /// Fetch from a URL and return text payload
-pub(crate) async fn fetch(url: &str) -> Result<String, errors::Error> {
-    let body = reqwest::get(url)
-        .await
+pub(crate) fn fetch(url: &str) -> Result<String, errors::Error> {
+    let body = reqwest::blocking::get(url)
         .map_err(errors::Error::FetchError)?
         .text()
-        .await
         .map_err(errors::Error::FetchError)?;
 
     Ok(body)
@@ -63,9 +61,9 @@ pub(crate) fn verify_jwt(token: &str) -> Result<MetadataBLOBPayload, Box<dyn Err
 
 /// Download the FIDO Metadata
 /// [FIDO_METADATA_URL] is used unless the env `FIDO_METADATA_URL` is set.
-pub async fn fetch_fido_metadata() -> Result<MetadataBLOBPayload, Box<dyn Error>> {
+pub fn fetch_fido_metadata() -> Result<MetadataBLOBPayload, Box<dyn Error>> {
     let url = env::var("FIDO_METADATA_URL").unwrap_or_else(|_| FIDO_METADATA_URL.to_string());
-    let body = fetch(&url).await?;
+    let body = fetch(&url)?;
     let metadata = verify_jwt(&body)?;
     Ok(metadata)
 }
