@@ -2,70 +2,51 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
-use app::Data;
-use mongodb::{bson::Document, options::FindOptions};
-use std::error::Error;
 
-#[tauri::command(async)]
-async fn search(
-    filter_str: String,  /*Document */
-    options_str: String, /*FindOptions */
-) -> Result<Vec<app::MetadataStatement>, String> {
-    println!("{:?} - {:?}", &filter_str, &options_str);
-    let data = Data::new().await;
-    let mut filter: Option<Document> = None;
-    let mut options: Option<FindOptions> = None;
+use serde_json::Value;
+use std::{
+    collections::HashMap,
+    error::Error,
+    sync::{Arc, Mutex},
+};
+use tauri::State;
 
-    if !filter_str.is_empty() {
-        let tmp: Document =
-            serde_json::from_str(&filter_str).map_err(|e| format!("Filter: {}", e))?;
-        filter = Some(tmp);
+#[derive(Default)]
+struct Database(Arc<Mutex<HashMap<String, Value>>>);
+
+#[tauri::command]
+fn search(
+    _filter_str: Option<String>,  /*Document */
+    _options_str: Option<String>, /*FindOptions */
+    db: State<'_, Database>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let cache = db.0.lock().unwrap();
+
+    if let Some(value) = cache.get("entries") {
+        return match value {
+            Value::Array(array) => Ok(array.clone()),
+            _ => Err("I really wanted an array here".to_string()),
+        };
     }
-
-    if !options_str.is_empty() {
-        let tmp: FindOptions =
-            serde_json::from_str(&options_str).map_err(|e| format!("Options: {}", e))?;
-        options = Some(tmp);
-    }
-
-    let result = data.find_statement(filter, options).await.map_err(|e| {
-        log::info!("{}", e.to_string());
-        format!("{:?}", e)
-    })?;
-    Ok(result)
+    Err("Well, this is awkward".to_string())
 }
 
 /// Fetch the latest metadata
 #[tauri::command]
-async fn fetch_metadata() -> Result<(), String> {
+fn fetch_metadata(db: State<'_, Database>) -> Result<(), String> {
     // Fetch the metadata from the FIDO site
-    let blob = app::fetch_fido_metadata()
-        .await
-        .map_err(|e| format!("{:?}", &e.to_string()))?;
-
-    // Store the metadata header info
-    let data = Data::new().await;
-    let _ = data
-        .put_metadata_blob(&blob)
-        .await
-        .map_err(|e| format!("{:?}", &e.to_string()))?;
-
-    // Store each of the statements
-    for entry in blob.entries {
-        if let Some(statement) = entry.metadata_statement {
-            data.put_entry(&statement)
-                .await
-                .map_err(|e| format!("{:?}", &e.to_string()))?;
-        }
+    let blob = app::fetch_fido_metadata().map_err(|e| format!("{:?}", &e.to_string()))?;
+    let mut cache = db.0.lock().unwrap();
+    for entry in blob {
+        cache.insert(entry.0, entry.1);
     }
-
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
     tauri::Builder::default()
+        .manage(Database(Default::default()))
         .invoke_handler(tauri::generate_handler![fetch_metadata, search])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,31 +1,24 @@
 use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
-use std::env;
-use std::error::Error;
+use serde_json::Value;
+use std::{collections::HashMap, env, error::Error};
 use x509_parser::prelude::*;
 
-pub use data::Data;
-pub use model::*;
-
-pub mod data;
 pub mod errors;
-pub mod model;
 
 /// Default url for metadata
 static FIDO_METADATA_URL: &str = "https://mds.fidoalliance.org";
 
 /// Fetch from a URL and return text payload
-pub(crate) async fn fetch(url: &str) -> Result<String, errors::Error> {
-    let body = reqwest::get(url)
-        .await
+pub(crate) fn fetch(url: &str) -> Result<String, errors::Error> {
+    let body = reqwest::blocking::get(url)
         .map_err(errors::Error::FetchError)?
         .text()
-        .await
         .map_err(errors::Error::FetchError)?;
-
+    log::info!("Fetched {}", url);
     Ok(body)
 }
 
-pub(crate) fn verify_jwt(token: &str) -> Result<MetadataBLOBPayload, Box<dyn Error>> {
+pub(crate) fn verify_jwt(token: &str) -> Result<HashMap<String, Value>, Box<dyn Error>> {
     // Pull the algorithm from the alg claim and the
     // X509 cert list from the x5c claim
     let header = decode_header(token)?;
@@ -51,7 +44,7 @@ pub(crate) fn verify_jwt(token: &str) -> Result<MetadataBLOBPayload, Box<dyn Err
         let key = DecodingKey::from_rsa_der(public_key_bytes);
 
         // Decode the JWT.
-        let result = decode::<MetadataBLOBPayload>(token, &key, &validation);
+        let result = decode::<HashMap<String, Value>>(token, &key, &validation);
 
         if let Ok(token_data) = result {
             let blob = token_data.claims;
@@ -63,9 +56,9 @@ pub(crate) fn verify_jwt(token: &str) -> Result<MetadataBLOBPayload, Box<dyn Err
 
 /// Download the FIDO Metadata
 /// [FIDO_METADATA_URL] is used unless the env `FIDO_METADATA_URL` is set.
-pub async fn fetch_fido_metadata() -> Result<MetadataBLOBPayload, Box<dyn Error>> {
+pub fn fetch_fido_metadata() -> Result<HashMap<String, Value>, Box<dyn Error>> {
     let url = env::var("FIDO_METADATA_URL").unwrap_or_else(|_| FIDO_METADATA_URL.to_string());
-    let body = fetch(&url).await?;
+    let body = fetch(&url)?;
     let metadata = verify_jwt(&body)?;
     Ok(metadata)
 }

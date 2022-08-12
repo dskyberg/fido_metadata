@@ -13,13 +13,14 @@ function Result(props) {
     let { result } = props
 
     let title
-    if (result.aaguid !== undefined) { title = `AAGUID: ${result.aaguid}` }
+    if (result.maaguid !== undefined) { title = `AAGUID: ${result.aaguid}` }
     else if (result.aaid !== undefined) { title = `AAID: ${title = result.aaid}` }
     else title = "No AAGUID or AAID"
 
-    const panelText = JSON.stringify(result, null, 4)
-    const icon = result.hasOwnProperty('icon') ? result.icon : null
-    const desc = result.hasOwnProperty('description') ? result.description : ''
+    let metadataStatement = result.hasOwnProperty("metadataStatement") ? result.metadataStatement : {}
+    const panelText = JSON.stringify(metadataStatement, null, 4)
+    const icon = metadataStatement.hasOwnProperty('icon') ? metadataStatement.icon : null
+    const desc = metadataStatement.hasOwnProperty('description') ? metadataStatement.description : ''
 
     return (
         <Box w={[200, 300, 800]} p={5} shadow='md' borderWidth='1px' >
@@ -34,8 +35,8 @@ function Result(props) {
                                     <Text>{desc}</Text>
                                     <Text>{title}</Text>
                                     <Box align="right">
-                                        {result.attachmentHint !== undefined && result.attachmentHint.map(hint => <Tag key={hint} label={hint} />)}
-                                        <Tag label={result.protocolFamily} colorScheme='teal' />
+                                        {metadataStatement.attachmentHint !== undefined && metadataStatement.attachmentHint.map(hint => <Tag key={hint} label={hint} />)}
+                                        <Tag label={metadataStatement.protocolFamily} colorScheme='teal' />
                                     </Box>
                                 </Box>
                             </Flex>
