@@ -15,7 +15,6 @@ use crate::model::*;
 static MONGODB_URL: &str = "mongodb+srv://davidskyberg:ycw%21FNT0nqy%21wtq.pun@cluster0.zwhiti2.mongodb.net/?retryWrites=true&w=majority";
 static DEFAULT_DB: &str = "fido";
 
-#[derive(Debug)]
 pub struct Data {
     pub client: Client,
     pub database: Database,
@@ -220,4 +219,5 @@ mod tests {
             println!("{}", &statement.aaguid.unwrap());
         }
     }
+
 }
