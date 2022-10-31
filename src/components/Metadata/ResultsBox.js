@@ -13,7 +13,7 @@ function Result(props) {
     let { result } = props
 
     let title
-    if (result.maaguid !== undefined) { title = `AAGUID: ${result.aaguid}` }
+    if (result.aaguid !== undefined) { title = `AAGUID: ${result.aaguid}` }
     else if (result.aaid !== undefined) { title = `AAID: ${title = result.aaid}` }
     else title = "No AAGUID or AAID"
 
